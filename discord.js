@@ -12,11 +12,12 @@ const client = new Client({
 // 創建一個 Collection 來存放指令
 client.commands = new Collection();
 
+// 用來存放 commands
+const commands = [];
+
 // 讀取 commands 資料夾下的 js 檔案
 const commandsPath = path.join(__dirname, "commands");
-const commandFiles = fs
-	.readdirSync(commandsPath)
-	.filter((file) => file.endsWith(".js"));
+const commandFiles = fs.readdirSync(commandsPath).filter((file) => file.endsWith(".js"));
 
 // 將指令加入 Collection
 for (const file of commandFiles) {
@@ -29,6 +30,9 @@ for (const file of commandFiles) {
 	} else {
 		console.log(`[警告] ${filePath} 中的指令缺少必要的 "data" 或 "execute" 屬性。`);
 	}
+
+	// 存進 commands array
+	commands.push(command.data.toJSON());
 }
 
 // 當收到互動事件時，檢查是否為指令，若是則執行該指令
@@ -60,9 +64,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
 	}
 });
 
+// 註冊指令
+const registerCommands = async (client) => {
+	try {
+		if (client.application) {
+			console.log(`Started refreshing ${commands.length} application (/) commands.`);
+			const data = await client.application.commands.set(commands);
+			console.log(`Successfully reloaded ${data.size} application (/) commands.`);
+		}
+	} catch(e) {
+		console.error(e);
+	}
+}
+
 // 當 client 就緒時顯示訊息
-client.once(Events.ClientReady, (c) => {
-	console.log(`已就緒！已登入帳號：${c.user.tag}`);
+client.once(Events.ClientReady, async (client) => {
+	console.log(`已就緒！已登入帳號：${client.user.tag}`);
+	await registerCommands(client);
 });
 
 // 使用 token 進行登入
